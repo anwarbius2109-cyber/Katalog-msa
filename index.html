@@ -291,9 +291,16 @@
         <h2 class="text-4xl font-bold text-center mb-16 max-w-4xl mx-auto">
           Lebih dari <span class="text-gradient">10.000</span> pasangan telah
           mempercayakan momen spesial mereka kepada
-          <span class="text-gradient">RiseAdvertising</span>. Lihat tema
-          undangan yang telah kami sediakan:
+          <span class="text-gradient">Kabar Spesial</span>. Lihat tema undangan
+          yang telah kami sediakan:
         </h2>
+
+        <div
+          id="categories"
+          class="flex flex-wrap gap-2 items-center justify-center mb-6"
+        >
+          <!-- render category disini -->
+        </div>
 
         <div
           id="themes"
@@ -698,16 +705,31 @@
       const baseUrl = "https://webinvit.id";
       const phoneNumber = "628xxxxxx";
 
+      const categoryUrl = baseUrl + "/seller/api/v1/categories";
       let nextPageUrl = baseUrl + "/seller/api/v1/products/websites?limit=12"; // halaman awal
       let isLoading = false;
+      let currentCategoryId = null;
 
-      async function loadThemes() {
-        if (!nextPageUrl || isLoading) return;
+      async function loadThemes(reset = false) {
         isLoading = true;
 
         const container = document.getElementById("themes");
         const btn = document.getElementById("loadMore");
         btn.textContent = "Loading...";
+
+        if (reset) {
+          container.innerHTML = "";
+          nextPageUrl = `${baseUrl}/seller/api/v1/products/websites?limit=12`;
+          if (currentCategoryId) {
+            nextPageUrl += `&categoryId=${currentCategoryId}`;
+          }
+        }
+
+        if (!nextPageUrl) {
+          isLoading = false;
+          btn.style.display = "none";
+          return;
+        }
 
         try {
           const response = await fetch(nextPageUrl);
@@ -718,6 +740,7 @@
 
           // Simpan URL untuk halaman berikutnya
           nextPageUrl = result.data?.next_page_url || null;
+          if (nextPageUrl) nextPageUrl = nextPageUrl.replace("http:", "https:");
 
           // Render setiap tema
           themes.forEach((theme) => {
@@ -729,7 +752,7 @@
                 </div>
                 <div class="p-2 sm:p-4">
                   <h3 class="font-bold leading-tight mb-3">${theme.name}</h3>
-                  <div class="grid gap-2 sm:grid-cols-2">
+                  <div class="grid gap-2 ">
                     <a
                       href="${baseUrl}/${theme.slug}"
                       target="_blank"
@@ -737,14 +760,6 @@
                       class="btn text-sm sm:text-base inline-flex items-center text-center justify-center rounded h-8 px-2 bg-secondary text-black hover:bg-secondary"
                     >
                       Preview
-                    </a>
-                    <a
-                      href="https://wa.me/${phoneNumber}?text=Saya+mau+pesan+tema+${theme.name}"
-                      target="_blank"
-                      rel="nofollow"
-                      class="btn text-sm sm:text-base inline-flex items-center text-center justify-center rounded h-8 px-2 bg-primary text-white hover:bg-primary"
-                    >
-                      Pesan
                     </a>
                   </div>
                 </div>
@@ -762,14 +777,50 @@
           alert("Terjadi kesalahan saat memuat data.");
         } finally {
           isLoading = false;
+          reset = false;
           btn.textContent = "Load More Themes";
         }
       }
 
       // Event listener tombol
-      document.getElementById("loadMore").addEventListener("click", loadThemes);
+      document
+        .getElementById("loadMore")
+        .addEventListener("click", () => loadThemes());
+
+      // Fetch categories
+      async function loadCategories() {
+        const categoriesContainer = document.getElementById("categories");
+
+        try {
+          const response = await fetch(categoryUrl);
+          if (!response.ok) throw new Error("Gagal mengambil data kategori");
+
+          const result = await response.json();
+          const categories = result.data || [];
+
+          categories.forEach((category) => {
+            const buttonCategory = document.createElement("button");
+            buttonCategory.className =
+              "btn text-sm sm:text-base inline-flex items-center text-center justify-center rounded h-8 px-2 bg-secondary hover:bg-secondary m-1 hover:cursor-pointer";
+            buttonCategory.textContent = category.name;
+
+            // Saat tombol diklik, set categoryId dan muat ulang tema
+            buttonCategory.addEventListener("click", () => {
+              currentCategoryId = category.id;
+              isLoading = false;
+              loadThemes(true);
+              console.log("click");
+            });
+
+            categoriesContainer.appendChild(buttonCategory);
+          });
+        } catch (error) {
+          console.error(error);
+        }
+      }
 
       // Load pertama kali
+      loadCategories();
       loadThemes();
     </script>
   </body>
